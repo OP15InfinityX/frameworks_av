@@ -1149,6 +1149,10 @@ status_t StagefrightRecorder::setParameter(
         }
     } else if (key == "log-session-id") {
         return setLogSessionId(value);
+    } else if (key == "OplusUserData") {
+        // [PATCH OPLUSHDR] Record and pass parameter to Muxer
+        mOplusUserData = value.c_str();
+        return OK;
     } else if (key == "set-title") {
         return OK;
     } else {
@@ -2194,7 +2198,7 @@ status_t StagefrightRecorder::setupVideoEncoder(
     sp<MediaCodecSource> encoder = MediaCodecSource::Create(
             mLooper, format, cameraSource, mPersistentSurface, flags);
     if (encoder == NULL) {
-        ALOGE("Failed to create video encoder");
+        ALOGE("[PATCH OPLUS] FATAL: Failed to create video encoder!");
         // When the encoder fails to be created, we need
         // release the camera source due to the camera's lock
         // and unlock mechanism.
@@ -2341,6 +2345,11 @@ void StagefrightRecorder::setupMPEG4orWEBMMetaData(sp<MetaData> *meta) {
     if (mOutputFormat == OUTPUT_FORMAT_MPEG_4 || mOutputFormat == OUTPUT_FORMAT_THREE_GPP) {
         (*meta)->setInt32(kKeyEmptyTrackMalFormed, true);
         (*meta)->setInt32(kKey4BitTrackIds, true);
+    }
+
+    // [PATCH OPLUSHDR] Pass metadata to MPEG4Writer
+    if (!mOplusUserData.empty()) {
+        (*meta)->setCString(kKeyOplusUserData, mOplusUserData.c_str());
     }
 }
 
