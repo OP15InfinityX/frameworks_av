@@ -1678,6 +1678,17 @@ void CCodec::configure(const sp<AMessage> &msg) {
                             // No-op
                             break;
                     }
+                    if ((config->mDomain & Config::IS_ENCODER)
+                            && format == HAL_PIXEL_FORMAT_YV12
+                            && flexSemiPlanarPixelFormat.count(8) != 0) {
+                        // Qualcomm Venus encoders cannot allocate or consume planar
+                        // YV12 for video-encoder usage (the gralloc has no video
+                        // constraint for it), even though the vendor advertises YV12
+                        // as its planar flexible format. OEM HEIC writers request
+                        // planar but feed NV12 (liboplusheifwriter convert*ToNV12),
+                        // so prefer the semi-planar (NV12/VENUS) format instead.
+                        format = flexSemiPlanarPixelFormat[8];
+                    }
                 }
             }
 
