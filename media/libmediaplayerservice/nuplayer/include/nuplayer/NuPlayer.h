@@ -111,6 +111,8 @@ protected:
 
     virtual void onMessageReceived(const sp<AMessage> &msg);
 
+    static bool IsHTTPLiveURL(const char *url);
+
 public:
     struct NuPlayerStreamListener;
     struct Source;
