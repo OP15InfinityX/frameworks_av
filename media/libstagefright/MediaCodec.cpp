@@ -2482,7 +2482,61 @@ void MediaCodec::PostReplyWithError(const sp<AReplyToken> &replyID, int32_t err)
     response->postReply(replyID);
 }
 
+// OnePlus/Oplus ships an OEM CCodec override (OplusCCodec, in
+// liboplussfplugin_ccodec.so) that adds QTI encoder tuning (QP/GOP/scene/HDR,
+// media-boost) used by the HEIC OplusHeifWriter HEVC-encode path
+// (c2.qti.hevc.encoder). On OOS this is wired in through the QTI AVExtensions
+// framework carried in their libstagefright: MediaCodec::GetCodecBase() there
+// calls AVFactory::get()->createCCodec(), and the ExtensionsLoader<AVFactory>
+// dlopen()s liboplusavenhancements.so and dlsym()s the C entrypoint
+// createExtendedFactory(), which returns an OplusExtendedFactory whose
+// createCCodec() (vtable slot 1) constructs the OplusCCodec.
+//
+// Stock AOSP frameworks/av (this tree) has no AVExtensions framework, so
+// replicate only the tail of that path here: when the OEM enhancement lib is
+// present, build the OEM CCodec via the same createExtendedFactory entrypoint;
+// otherwise fall back to the stock CCodec. This keeps the change safe on builds
+// that do not ship the Oplus libs (dlopen fails -> stock CCodec).
 static CodecBase *CreateCCodec() {
+    // Load the OEM AV-enhancement factory once. RTLD_NOW so that if any link in
+    // the OEM chain (liboplussfplugin_ccodec / liboplusstagefright / deps) is
+    // absent, dlopen fails cleanly and we fall back to the stock CCodec.
+    static void *const sOemFactory = []() -> void * {
+        void *handle = dlopen("liboplusavenhancements.so", RTLD_NOW | RTLD_LOCAL);
+        if (handle == nullptr) {
+            return nullptr;
+        }
+        using CreateExtendedFactoryFn = void *(*)();
+        auto createExtendedFactory = reinterpret_cast<CreateExtendedFactoryFn>(
+                dlsym(handle, "createExtendedFactory"));
+        if (createExtendedFactory == nullptr) {
+            ALOGW("liboplusavenhancements.so has no createExtendedFactory; "
+                  "using stock CCodec");
+            return nullptr;
+        }
+        void *factory = createExtendedFactory();
+        if (factory != nullptr) {
+            ALOGI("Using OEM Oplus CCodec extension (liboplusavenhancements)");
+        }
+        return factory;
+    }();
+
+    if (sOemFactory != nullptr) {
+        // AVFactory vtable layout, from OOS libstagefright RE
+        // (OplusExtendedFactory extends AVFactory): slot 0 = createACodec(),
+        // slot 1 = createCCodec() returning a raw CodecBase* (OplusCCodec).
+        void **vtable = *reinterpret_cast<void **const *>(sOemFactory);
+        using CreateCCodecFn = CodecBase *(*)(void *);
+        auto createOemCCodec = reinterpret_cast<CreateCCodecFn>(vtable[1]);
+        if (createOemCCodec != nullptr) {
+            CodecBase *codec = createOemCCodec(sOemFactory);
+            if (codec != nullptr) {
+                return codec;
+            }
+            ALOGW("OEM Oplus createCCodec returned null; using stock CCodec");
+        }
+    }
+
     return new CCodec;
 }
 
