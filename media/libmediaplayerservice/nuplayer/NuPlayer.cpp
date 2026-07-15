@@ -213,6 +213,23 @@ NuPlayer::NuPlayer(pid_t pid, const sp<MediaClock> &mediaClock)
     clearFlushComplete();
 }
 
+bool NuPlayer::IsHTTPLiveURL(const char *url) {
+    if (!strncasecmp("http://", url, 7)
+            || !strncasecmp("https://", url, 8)
+            || !strncasecmp("file://", url, 7)) {
+        size_t len = strlen(url);
+        if (len >= 5 && !strcasecmp(".m3u8", &url[len - 5])) {
+            return true;
+        }
+
+        if (strstr(url,"m3u8")) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 NuPlayer::~NuPlayer() {
 }
 
