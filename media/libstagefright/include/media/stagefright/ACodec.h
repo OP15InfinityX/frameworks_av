@@ -339,6 +339,8 @@ private:
     } mVendorExtensionsStatus;
 
     status_t setCyclicIntraMacroblockRefresh(const sp<AMessage> &msg, int32_t mode);
+    sp<IOMXObserver> createObserver();
+
     status_t allocateBuffersOnPort(OMX_U32 portIndex);
     status_t freeBuffersOnPort(OMX_U32 portIndex);
     status_t freeBuffer(OMX_U32 portIndex, size_t i);
