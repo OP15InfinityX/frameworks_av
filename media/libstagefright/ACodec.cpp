@@ -888,6 +888,13 @@ status_t ACodec::setPortMode(int32_t portIndex, IOMX::PortMode mode) {
     return OK;
 }
 
+sp<IOMXObserver> ACodec::createObserver() {
+    sp<AMessage> notify = new AMessage(kWhatOMXMessageList, this);
+    notify->setInt32("generation", this->mNodeGeneration + 1);
+    sp<CodecObserver> observer = new CodecObserver(notify);
+    return observer;
+}
+
 status_t ACodec::allocateBuffersOnPort(OMX_U32 portIndex) {
     CHECK(portIndex == kPortIndexInput || portIndex == kPortIndexOutput);
 
