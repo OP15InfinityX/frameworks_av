@@ -255,23 +255,6 @@ void NuPlayer::setDataSourceAsync(const sp<IStreamSource> &source) {
     mDataSourceType = DATA_SOURCE_TYPE_STREAM;
 }
 
-static bool IsHTTPLiveURL(const char *url) {
-    if (!strncasecmp("http://", url, 7)
-            || !strncasecmp("https://", url, 8)
-            || !strncasecmp("file://", url, 7)) {
-        size_t len = strlen(url);
-        if (len >= 5 && !strcasecmp(".m3u8", &url[len - 5])) {
-            return true;
-        }
-
-        if (strstr(url,"m3u8")) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 void NuPlayer::setDataSourceAsync(
         const sp<IMediaHTTPService> &httpService,
         const char *url,
