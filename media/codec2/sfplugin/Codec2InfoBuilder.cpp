@@ -447,6 +447,13 @@ status_t Codec2InfoBuilder::buildMediaCodecList(MediaCodecListWriter* writer) {
     // parse default XML files
     parser.parseXmlFilesInSearchDirs();
 
+    // Oplus devices using the Dolby Vision DPU keep the codec entries in a
+    // standalone ODM XML instead of including them from the selected vendor
+    // codec variant.
+    if (base::GetBoolProperty("ro.vendor.oplus.dolby_vision_dpu.dvs", false)) {
+        parser.parseXmlFilesInSearchDirs({ "media_codecs_dolby_vision.xml" });
+    }
+
     // The mainline modules for media may optionally include some codec shaping information.
     // Based on vendor partition SDK, and the brand/product/device information
     // (expect to be empty in almost always)
