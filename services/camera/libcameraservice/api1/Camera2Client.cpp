@@ -35,6 +35,7 @@
 #include <gui/view/Surface.h>
 
 #include "api1/Camera2Client.h"
+#include "CameraServiceExtFactory.h"
 
 #include "api1/client2/StreamingProcessor.h"
 #include "api1/client2/JpegProcessor.h"
@@ -450,7 +451,11 @@ binder::Status Camera2Client::disconnect() {
     binder::Status res = binder::Status::ok();
     // Allow both client and the cameraserver to disconnect at all times
     int callingPid = getCallingPid();
-    if (callingPid != mCallingPid && callingPid != mServicePid) return res;
+    const bool invalidCaller = callingPid != mCallingPid && callingPid != mServicePid;
+    if (!CameraServiceExtFactory::beforeDisconnect(invalidCaller, mDevice == nullptr,
+            String8(mCameraIdStr.c_str()))) {
+        return res;
+    }
 
     if (mDevice == nullptr) return res;
 

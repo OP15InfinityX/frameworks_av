@@ -36,6 +36,7 @@
 #include <com_android_internal_camera_flags.h>
 
 #include "common/Camera2ClientBase.h"
+#include "CameraServiceExtFactory.h"
 
 #include "api2/CameraDeviceClient.h"
 
@@ -283,10 +284,17 @@ binder::Status Camera2ClientBase<TClientBase>::disconnectImpl() {
 
     ALOGV("Camera %s: serializationLock acquired", TClientBase::mCameraIdStr.c_str());
     binder::Status res = binder::Status::ok();
-    // Allow both client and the media server to disconnect at all times
+    // Allow both client and the media server to disconnect at all times.
+    // The stock Oplus extension also marks an active close here so a competing
+    // connect waits for the HAL release instead of racing it.
     int callingPid = TClientBase::getCallingPid();
-    if (callingPid != TClientBase::mCallingPid &&
-        callingPid != TClientBase::mServicePid) return res;
+    const bool invalidCaller = callingPid != TClientBase::mCallingPid &&
+            callingPid != TClientBase::mServicePid;
+    const bool skipDeviceDisconnect = mDevice == nullptr || TClientBase::mSharedMode;
+    if (!CameraServiceExtFactory::beforeDisconnect(invalidCaller, skipDeviceDisconnect,
+            String8(TClientBase::mCameraIdStr.c_str()))) {
+        return res;
+    }
 
     ALOGD("Camera %s: Shutting down", TClientBase::mCameraIdStr.c_str());
 

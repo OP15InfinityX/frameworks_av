@@ -265,6 +265,7 @@ void CameraService::onFirstRef()
     res = enumerateProviders();
     if (res == OK) {
         mInitialized = true;
+        CameraServiceExtFactory::setCameraServiceInstance(sp<CameraService>::fromExisting(this));
     }
 
     mUidPolicy = new UidPolicy(this);
@@ -2627,6 +2628,17 @@ Status CameraService::connectHelper(const sp<CALLBACK>& cameraCb, const std::str
 
     sCurrPackageName = clientPackageName;
 
+    // Stock Oplus CameraService runs its intelligent eviction/wait logic before
+    // taking mServiceLock. This gives a client that is still closing time to
+    // release the camera before the new client reaches the HAL open.
+    const int extConnectStatus = CameraServiceExtFactory::beforeConnect(
+            String8(cameraId.c_str()), String16(clientPackageName.c_str()), shimUpdateOnly);
+    if (extConnectStatus != NO_ERROR) {
+        return STATUS_ERROR_FMT(extConnectStatus,
+                "Oplus CameraService extension rejected camera \"%s\" for \"%s\"",
+                cameraId.c_str(), clientPackageName.c_str());
+    }
+
     {
         // Acquire mServiceLock and prevent other clients from connecting
         std::unique_ptr<AutoConditionLock> lock =
@@ -2884,6 +2896,12 @@ Status CameraService::connectHelper(const sp<CALLBACK>& cameraCb, const std::str
         } else {
             // Otherwise, add client to active clients list
             finishConnectLocked(client, partial, oomScoreOffset, systemNativeClient);
+
+            CameraServiceExtFactory::afterConnect(
+                    String8(cameraId.c_str()), String16(clientPackageName.c_str()),
+                    shimUpdateOnly, static_cast<BasicClient*>(client.get()), client.get(),
+                    mCameraProviderManager->getProviderTagIdLocked(cameraId),
+                    static_cast<int>(effectiveApiLevel));
         }
 
         client->setImageDumpMask(mImageDumpMask);
@@ -4414,6 +4432,9 @@ binder::Status CameraService::BasicClient::disconnect() {
             getCallingUid(),
             getCallingPid());
     }
+
+    CameraServiceExtFactory::afterDisconnect(
+            String8(mCameraIdStr.c_str()), String16(getPackageName().c_str()), sCameraService);
 
     return res;
 }
