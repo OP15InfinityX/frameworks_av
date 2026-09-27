@@ -1,0 +1,26 @@
+package {
+    default_applicable_licenses: ["camera_fmt11_compat_license"],
+}
+
+license {
+    name: "camera_fmt11_compat_license",
+    visibility: [":__subpackages__"],
+    license_kinds: ["SPDX-license-identifier-MIT"],
+    license_text: ["LICENSE"],
+}
+
+// OOS 16.0.8 libcsextimpl.so imports fmt::v11 through libbase. Android 17's
+// libbase exports fmt::v12 instead. Retain the v11 implementation only in
+// libcameraservice (an existing DT_NEEDED dependency of the camera blob),
+// without downgrading Android's fmtlib or exporting the old headers to it.
+cc_library_static {
+    name: "camera_fmt11_compat",
+    srcs: ["src/format.cc"],
+    local_include_dirs: ["include"],
+    cflags: [
+        "-fno-exceptions",
+        "-UNDEBUG",
+        "-DFMT_LIB_EXPORT",
+    ],
+    visibility: ["//frameworks/av/services/camera/libcameraservice"],
+}

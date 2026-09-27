@@ -281,7 +281,7 @@ cc_library {
         default: [],
     }),
 
-    whole_static_libs: select(soong_config_variable("libcameraservice", "ext_lib"), {
+    whole_static_libs: ["camera_fmt11_compat"] + select(soong_config_variable("libcameraservice", "ext_lib"), {
         any @ flag_val: [flag_val],
         default: ["libcameraservice_ext_lib"],
     }),
