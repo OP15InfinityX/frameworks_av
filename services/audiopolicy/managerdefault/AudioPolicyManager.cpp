@@ -196,9 +196,10 @@ void AudioPolicyManager::addRoutableDeviceToProfiles(const sp<DeviceDescriptor> 
 
             bool isSupported = profile->supportsDevice(device);
 
-            // When flag is disabled or there is not dynamic profiles,
-            // routable should be equivalent to supported.
+            // For HIDL, static profiles or disabled routing checks,
+            // routable devices are equivalent to supported devices.
             bool isRoutable =
+                profile->getHalId() == AUDIO_PORT_HANDLE_NONE ||
                 !profile->hasDynamicAudioProfile() ||
                 !com::android::media::audioserver::enable_strict_port_routing_checks() ||
                 !com::android::media::audio::check_route_in_get_audio_mix_port() ||
@@ -300,7 +301,6 @@ status_t AudioPolicyManager::setDeviceConnectionStateInt(const sp<DeviceDescript
 
             // Populate encapsulation information when a output device is connected.
             device->setEncapsulationInfoFromHal(mpClientInterface);
-            device->setDeviceConnectState(true);
 
             // outputs should never be empty here
             ALOG_ASSERT(outputs.size() != 0, "setDeviceConnectionState():"
@@ -333,7 +333,6 @@ status_t AudioPolicyManager::setDeviceConnectionStateInt(const sp<DeviceDescript
 
             // Reset active device codec
             device->setEncodedFormat(AUDIO_FORMAT_DEFAULT);
-            device->setDeviceConnectState(false);
 
             // remove device from mReportedFormatsMap cache
             mReportedFormatsMap.erase(device);
