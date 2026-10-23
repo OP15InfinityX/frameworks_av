@@ -299,13 +299,15 @@ const SortedVector<String8>* VendorTagDescriptor::getAllSectionNames() const {
 status_t VendorTagDescriptor::lookupTag(const String8& name, const String8& section, /*out*/uint32_t* tag) const {
     ssize_t index = mReverseMapping.indexOfKey(section);
     if (index < 0) {
-        ALOGE("%s: Section '%s' does not exist.", __FUNCTION__, section.c_str());
+        // Optional OEM feature probes may legitimately target another provider's section.
+        ALOGV("%s: Section '%s' does not exist.", __FUNCTION__, section.c_str());
         return BAD_VALUE;
     }
 
     ssize_t nameIndex = mReverseMapping[index]->indexOfKey(name);
     if (nameIndex < 0) {
-        ALOGE("%s: Tag name '%s' does not exist.", __FUNCTION__, name.c_str());
+        // BAD_VALUE is the caller-visible result; absent optional tags are not HAL faults.
+        ALOGV("%s: Tag name '%s' does not exist.", __FUNCTION__, name.c_str());
         return BAD_VALUE;
     }
 
